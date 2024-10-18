@@ -111,7 +111,7 @@ def define_and_train_models(X_train_cc, y_train_cc, X_test_cc, y_test_cc,
         print(f"Accuracy (Credit Card Data): {accuracy_cc}")
         print(f"Accuracy (Fraud Data): {accuracy_fraud}\n")
 
-    # Define and train deep learning models
+    '''# Define and train deep learning models
     deep_learning_models = {
         'CNN': build_cnn((X_train_cc.shape[1], 1)),
         'RNN': build_rnn((X_train_cc.shape[1], 1)),
@@ -138,7 +138,7 @@ def define_and_train_models(X_train_cc, y_train_cc, X_test_cc, y_test_cc,
         results[model_name] = {'Credit Card Accuracy': accuracy_cc, 'Fraud Accuracy': accuracy_fraud}
 
         print(f"Accuracy (Credit Card Data): {accuracy_cc}")
-        print(f"Accuracy (Fraud Data): {accuracy_fraud}\n")
+        print(f"Accuracy (Fraud Data): {accuracy_fraud}\n")'''
 
     return results
 
