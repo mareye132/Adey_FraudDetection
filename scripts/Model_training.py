@@ -12,12 +12,12 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv1D, Flatten, LSTM
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+import os
 
 def prepare_data():
     # Load datasets
-    creditcard_df = pd.read_csv(r'/content/drive/MyDrive/Adey_FraudDetection/data/creditcard.csv')
-    fraud_df = pd.read_csv(r'/content/drive/MyDrive/Adey_FraudDetection/data/Fraud_Data.csv')
+    creditcard_df = pd.read_csv(r'C:/Users/user/Desktop/Github/Adey_FraudDetection/data/creditcard.csv')
+    fraud_df = pd.read_csv(r'C:/Users/user/Desktop/Github/Adey_FraudDetection/data/Fraud_Data.csv')
 
     # Drop non-numeric columns (or handle them accordingly)
     creditcard_df = creditcard_df.select_dtypes(include=[np.number])  # Keep only numeric columns
@@ -60,7 +60,7 @@ def build_and_train_cnn(X_train, y_train, X_test):
     model.fit(X_train_reshaped, y_train, epochs=10, batch_size=32, verbose=0)
     
     # Predict and return rounded values for accuracy calculation
-    return np.round(model.predict(X_test_reshaped)).flatten()
+    return model, np.round(model.predict(X_test_reshaped)).flatten()
 
 def build_and_train_rnn(X_train, y_train, X_test):
     # Reshape input for RNN
@@ -78,7 +78,7 @@ def build_and_train_rnn(X_train, y_train, X_test):
     model.fit(X_train_reshaped, y_train, epochs=10, batch_size=32, verbose=0)
     
     # Predict and return rounded values for accuracy calculation
-    return np.round(model.predict(X_test_reshaped)).flatten()
+    return model, np.round(model.predict(X_test_reshaped)).flatten()
 
 def build_and_train_lstm(X_train, y_train, X_test):
     # Reshape input for LSTM
@@ -96,7 +96,7 @@ def build_and_train_lstm(X_train, y_train, X_test):
     model.fit(X_train_reshaped, y_train, epochs=10, batch_size=32, verbose=0)
     
     # Predict and return rounded values for accuracy calculation
-    return np.round(model.predict(X_test_reshaped)).flatten()
+    return model, np.round(model.predict(X_test_reshaped)).flatten()
 
 def define_and_train_models(X_train_cc, y_train_cc, X_test_cc, y_test_cc, 
                             X_train_fraud, y_train_fraud, X_test_fraud, y_test_fraud):
@@ -133,47 +133,38 @@ def define_and_train_models(X_train_cc, y_train_cc, X_test_cc, y_test_cc,
         print(f"Accuracy (Fraud Data): {accuracy_fraud}\n")
 
         # Log model and metrics with MLflow
+        model_path = model_name.replace(" ", "_")  # Replace spaces with underscores for valid paths
         with mlflow.start_run(run_name=model_name):
             mlflow.log_param("Model Type", model_name)
             mlflow.log_metric("Credit Card Accuracy", accuracy_cc)
             mlflow.log_metric("Fraud Accuracy", accuracy_fraud)
-            mlflow.sklearn.log_model(model, model_name)
+            mlflow.sklearn.log_model(model, model_path, registered_model_name=model_path)
 
-    # Build and evaluate CNN
-    print("Training CNN...")
-    cnn_predictions = build_and_train_cnn(X_train_fraud, y_train_fraud, X_test_fraud)
-    cnn_accuracy = accuracy_score(y_test_fraud, cnn_predictions)
-    results['CNN'] = {'Credit Card Accuracy': None, 'Fraud Accuracy': cnn_accuracy}
-    
-    with mlflow.start_run(run_name='CNN'):
-        mlflow.log_param("Model Type", "CNN")
-        mlflow.log_metric("Fraud Accuracy", cnn_accuracy)
-    
-    # Build and evaluate RNN
-    print("Training RNN...")
-    rnn_predictions = build_and_train_rnn(X_train_fraud, y_train_fraud, X_test_fraud)
-    rnn_accuracy = accuracy_score(y_test_fraud, rnn_predictions)
-    results['RNN'] = {'Credit Card Accuracy': None, 'Fraud Accuracy': rnn_accuracy}
-    
-    with mlflow.start_run(run_name='RNN'):
-        mlflow.log_param("Model Type", "RNN")
-        mlflow.log_metric("Fraud Accuracy", rnn_accuracy)
+    # Deep learning models
+    dl_models = {
+        "CNN": build_and_train_cnn(X_train_fraud, y_train_fraud, X_test_fraud),
+        "RNN": build_and_train_rnn(X_train_fraud, y_train_fraud, X_test_fraud),
+        "LSTM": build_and_train_lstm(X_train_fraud, y_train_fraud, X_test_fraud)
+    }
 
-    # Build and evaluate LSTM
-    print("Training LSTM...")
-    lstm_predictions = build_and_train_lstm(X_train_fraud, y_train_fraud, X_test_fraud)
-    lstm_accuracy = accuracy_score(y_test_fraud, lstm_predictions)
-    results['LSTM'] = {'Credit Card Accuracy': None, 'Fraud Accuracy': lstm_accuracy}
-    
-    with mlflow.start_run(run_name='LSTM'):
-        mlflow.log_param("Model Type", "LSTM")
-        mlflow.log_metric("Fraud Accuracy", lstm_accuracy)
+    for model_name, (model, predictions) in dl_models.items():
+        accuracy = accuracy_score(y_test_fraud, predictions)
+        results[model_name] = {'Credit Card Accuracy': None, 'Fraud Accuracy': accuracy}
+
+        print(f"Accuracy ({model_name} on Fraud Data): {accuracy}\n")
+
+        # Log the deep learning models with MLflow
+        model_path = model_name.replace(" ", "_")  # Replace spaces with underscores for valid paths
+        with mlflow.start_run(run_name=model_name):
+            mlflow.log_param("Model Type", model_name)
+            mlflow.log_metric("Fraud Accuracy", accuracy)
+            mlflow.keras.log_model(model, model_path, registered_model_name=model_path)
 
     return results
 
 if __name__ == "__main__":
     # Set MLflow tracking URI and experiment
-    mlflow.set_tracking_uri('/content/drive/MyDrive/Adey_FraudDetection/notebooks/mlruns')  # Update path here
+    mlflow.set_tracking_uri('file:///C:/Users/user/Desktop/Github/Adey_FraudDetection/mlruns')  # Update path here
     mlflow.set_experiment("Fraud Detection Models")
 
     # Prepare data
